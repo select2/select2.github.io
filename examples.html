@@ -396,6 +396,70 @@ $(".js-programmatic-multi-clear").on("click", function () { $exampleMulti.val(nu
     </div>
   </section>
 
+  <!-- Hidden until 4.0.0-beta.2 is released
+
+  <section id="events" class="row">
+    <div class="col-md-4">
+      <h1>Events</h1>
+
+      <p>
+        Select2 will trigger some events on the original select element,
+        allowing you to integrate it with other components. You can find more
+        information on events
+        <a href="options.html#events">on the options page</a>.
+      </p>
+
+      <p>
+        <select class="js-states js-example-events form-control"></select>
+      </p>
+
+      <p>
+        <select class="js-states js-example-events form-control" multiple="multiple"></select>
+      </p>
+
+      <p>
+        <code>change</code> is fired whenever an option is selected or removed.
+      </p>
+
+      <p>
+        <code>select2:open</code> is fired whenever the dropdown is opened.
+      </p>
+
+      <p>
+        <code>select2:close</code> is fired whenever the dropdown is closed.
+      </p>
+    </div>
+    <div class="col-md-8">
+      <h2>Example code</h2>
+
+      <ul class="js-event-log"></ul>
+
+      <pre data-fill-from=".js-code-events"></pre>
+
+<script type="text/javascript" class="js-code-events">
+var $eventLog = $(".js-event-log");
+var $eventSelect = $(".js-example-events");
+
+$eventSelect.on("select2:open", function (e) { log("select2:open"); });
+$eventSelect.on("select2:close", function (e) { log("select2:close"); });
+
+$eventSelect.on("change", function (e) { log("change"); });
+
+function log (name, args) {
+  args = args || {};
+  var $e = $("<li>" + name + " -> " + JSON.stringify(args) + "</li>");
+  $eventLog.append($e);
+  $e.animate({ opacity: 1 }, 10000, 'linear', function () {
+    $e.animate({ opacity: 0 }, 2000, 'linear', function () {
+      $e.remove();
+    });
+  });
+}
+</script>
+    </div>
+  </section>
+  -->
+
   <section id="tags" class="row">
     <div class="col-md-4">
       <h1>Tagging support</h1>
@@ -405,9 +469,10 @@ $(".js-programmatic-multi-clear").on("click", function () { $exampleMulti.val(nu
       </p>
 
       <p>
-        <select class="js-example-tags form-control">
-          <option value="one">First</option>
-          <option value="other">Other</option>
+        <select class="js-example-tags form-control" multiple="multiple">
+          <option selected="selected">orange</option>
+          <option>white</option>
+          <option selected="selected">purple</option>
         </select>
       </p>
 
@@ -615,15 +680,15 @@ $(".js-example-language").select2({
 
       <pre data-fill-from=".js-code-theme"></pre>
 
-      <script type="text/x-example-code" class="js-code-theme">
-      $(".js-example-theme-single").select2({
-        theme: "classic"
-      });
+<script type="text/x-example-code" class="js-code-theme">
+$(".js-example-theme-single").select2({
+  theme: "classic"
+});
 
-      $(".js-example-theme-multiple").select2({
-        theme: "classic"
-      });
-      </script>
+$(".js-example-theme-multiple").select2({
+  theme: "classic"
+});
+</script>
     </div>
   </section>
 
@@ -647,13 +712,13 @@ $(".js-example-language").select2({
     <div class="col-md-8">
       <h2>Example code</h2>
 
-      <pre data-fill-from=".js-code-theme"></pre>
+      <pre data-fill-from=".js-code-rtl"></pre>
 
-      <script type="text/x-example-code" class="js-code-rtl">
-      $(".js-example-rtl").select2({
-        dir: "rtl"
-      });
-      </script>
+<script type="text/x-example-code" class="js-code-rtl">
+$(".js-example-rtl").select2({
+  dir: "rtl"
+});
+</script>
     </div>
   </section>
 </div>
@@ -837,6 +902,8 @@ $.fn.select2.amd.require(
 
   $(".js-example-programmatic").select2();
   $(".js-example-programmatic-multi").select2();
+
+  //$eventSelect.select2();
 
   $tags.select2({
     tags: ['red', 'blue', 'green']
