@@ -9980,11 +9980,11 @@ define('select2/results',[
       var data = $highlighted.data('data');
 
       if ($highlighted.attr('aria-selected') == 'true') {
-        self.trigger('unselected', {
+        self.trigger('unselect', {
           data: data
         });
       } else {
-        self.trigger('selected', {
+        self.trigger('select', {
           data: data
         });
       }
@@ -10059,10 +10059,6 @@ define('select2/results',[
     });
 
     container.on('results:message', function (params) {
-      self.trigger('results:message', params);
-    });
-
-    this.on('results:message', function (params) {
       self.displayMessage(params);
     });
 
@@ -10102,7 +10098,7 @@ define('select2/results',[
       var data = $this.data('data');
 
       if ($this.attr('aria-selected') === 'true') {
-        self.trigger('unselected', {
+        self.trigger('unselect', {
           originalEvent: evt,
           data: data
         });
@@ -10110,7 +10106,7 @@ define('select2/results',[
         return;
       }
 
-      self.trigger('selected', {
+      self.trigger('select', {
         originalEvent: evt,
         data: data
       });
@@ -10471,7 +10467,7 @@ define('select2/selection/multiple',[
 
       var data = $selection.data('data');
 
-      self.trigger('unselected', {
+      self.trigger('unselect', {
         originalEvent: evt,
         data: data
       });
@@ -10597,18 +10593,24 @@ define('select2/selection/allowClear',[
 
     this.$selection.on('mousedown', '.select2-selection__clear',
       function (evt) {
-      evt.stopPropagation();
+        // Ignore the event if it is disabled
+        if (self.options.get('disabled')) {
+          return;
+        }
 
-      self.$element.val(self.placeholder.id).trigger('change');
+        evt.stopPropagation();
 
-      self.trigger('toggle');
+        self.$element.val(self.placeholder.id).trigger('change');
+
+        self.trigger('toggle');
     });
   };
 
   AllowClear.prototype.update = function (decorated, data) {
     decorated.call(this, data);
 
-    if (this.$selection.find('.select2-selection__placeholder').length > 0) {
+    if (this.$selection.find('.select2-selection__placeholder').length > 0 ||
+        data.length === 0) {
       return;
     }
 
@@ -10729,7 +10731,7 @@ define('select2/selection/search',[
   };
 
   Search.prototype.searchRemoveChoice = function (decorated, item) {
-    this.trigger('unselected', {
+    this.trigger('unselect', {
       data: item
     });
 
@@ -12114,6 +12116,12 @@ define('select2/data/tags',[
   function Tags (decorated, $element, options) {
     var tags = options.get('tags');
 
+    var createTag = options.get('createTag');
+
+    if (createTag !== undefined) {
+      this.createTag = createTag;
+    }
+
     decorated.call(this, $element, options);
 
     if ($.isArray(tags)) {
@@ -12402,7 +12410,23 @@ define('select2/dropdown',[
   };
 
   Dropdown.prototype.bind = function (container, $container) {
-    // Can be implemented in subclasses
+    var self = this;
+
+    container.on('select', function (params) {
+      self._onSelect(params);
+    });
+
+    container.on('unselect', function (params) {
+      self._onUnSelect(params);
+    });
+  };
+
+  Dropdown.prototype._onSelect = function () {
+    this.trigger('close');
+  };
+
+  Dropdown.prototype._onUnSelect = function () {
+    this.trigger('close');
   };
 
   return Dropdown;
@@ -13419,22 +13443,10 @@ define('select2/core',[
 
   Select2.prototype._registerSelectionEvents = function () {
     var self = this;
-    var nonRelayEvents = ['open', 'close', 'toggle', 'unselected'];
+    var nonRelayEvents = ['toggle'];
 
-    this.selection.on('open', function () {
-      self.open();
-    });
-    this.selection.on('close', function () {
-      self.close();
-    });
     this.selection.on('toggle', function () {
       self.toggleDropdown();
-    });
-
-    this.selection.on('unselected', function (params) {
-      self.trigger('unselect', params);
-
-      self.close();
     });
 
     this.selection.on('*', function (name, params) {
@@ -13456,25 +13468,8 @@ define('select2/core',[
 
   Select2.prototype._registerResultsEvents = function () {
     var self = this;
-    var nonRelayEvents = ['selected', 'unselected'];
-
-    this.results.on('selected', function (params) {
-      self.trigger('select', params);
-
-      self.close();
-    });
-
-    this.results.on('unselected', function (params) {
-      self.trigger('unselect', params);
-
-      self.close();
-    });
 
     this.results.on('*', function (name, params) {
-      if (nonRelayEvents.indexOf(name) !== -1) {
-        return;
-      }
-
       self.trigger(name, params);
     });
   };
@@ -13599,9 +13594,9 @@ define('select2/core',[
   Select2.prototype.enable = function (args) {
     if (console && console.warn) {
       console.warn(
-        'Select2: The `select2("val")` method has been deprecated and will be' +
-        ' removed in later Select2 versions. Use $element.prop("disabled") ' +
-        'instead.'
+        'Select2: The `select2("enable")` method has been deprecated and will' +
+        ' be removed in later Select2 versions. Use $element.prop("disabled")' +
+        ' instead.'
       );
     }
 
