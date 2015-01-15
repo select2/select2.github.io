@@ -20,7 +20,7 @@ slug: options
 
     <p>
       Select2 will automatically apply decorators to any adapters which have not
-      been manually overriden. The only time you need to decorate adapters is
+      been manually overridden. The only time you need to decorate adapters is
       when you are using third-party adapters not provided by Select2, or you
       are using features not provided in the Select2 core. You can apply a
       decorator to an adapter using the
@@ -248,10 +248,70 @@ placeholder: {
       <dd>boolean (<code>true</code> or <code>false</code>)</dd>
     </dl>
 
-    This option will determine what the <code>SelectAdapter</code> (used by
-    default) should use to set the value of the underlying <code>select</code>
-    element. It will also determine if the <code>MultipleSelection</code>
-    adapter should be used.
+    <p>
+      This option will determine what the <code>SelectAdapter</code> (used by
+      default) should use to set the value of the underlying <code>select</code>
+      element. It will also determine if the <code>MultipleSelection</code>
+      adapter should be used.
+    </p>
+
+    <h3 id="width">
+      Container width
+    </h3>
+
+    <p>
+      Select2 will try to match the width of the original element as closely as
+      possible. Sometimes this isn't perfect, which is what you can tell Select2
+      how to determine the width.
+    </p>
+
+    <div class="row">
+      <div class="col-sm-8">
+        <table class="table table-striped table-bordered">
+          <thead>
+            <tr>
+              <th>Value</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>"element"</code></td>
+              <td>
+                Uses javascript to calculate the width of the source element.
+              </td>
+            </tr>
+            <tr>
+              <td><code>"style"</code></td>
+              <td>
+                Copies the value of the width <code>style</code> attribute set on the source element.
+              </td>
+            </tr>
+            <tr>
+              <td><code>"resolve"</code></td>
+              <td>
+                Tries to use <code>style</code> to determine the width, falling back to <code>element</code>.
+              </td>
+            </tr>
+            <tr>
+              <td>Anything else</td>
+              <td>
+                The value of the <code>width</code> option is diretly set as the width of the container.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="col-sm-4">
+        <dl class="dl-horizontal">
+          <dt>Key</dt>
+          <dd><code>width</code></dd>
+
+          <dt>Value</dt>
+          <dd>string</dd>
+        </dl>
+      </div>
+    </div>
 
     <h3 id="language">
       Internationalization (Language support)
@@ -570,7 +630,7 @@ ajax: {
     </h2>
 
     <p>
-      Select2 can place the dropdown directly after the selection cotainer, so
+      Select2 can place the dropdown directly after the selection container, so
       it will appear in the same location within the DOM as the rest of Select2.
     </p>
 
@@ -683,7 +743,7 @@ ajax: {
       adapters. You can change almost anything involving the way Select2 works
       to the way Select2 interacts with the page by modifying the core adapters.
       Most third-party plugins should provide decorators (used to wrap adapters)
-      and custom adpaters that you can use.
+      and custom adapters that you can use.
     </p>
 
     <p>
@@ -813,7 +873,7 @@ SelectionAdapter.update = function (data) { };
 // what options within the results are selected.
 //
 // @param callback A function that should be called when the current selection
-//   has been retrieved. The first paramter to the function should be an array
+//   has been retrieved. The first parameter to the function should be an array
 //   of data objects.
 DataAdapter.current = function (callback) {
   callback(currentData);
@@ -867,7 +927,7 @@ DataAdapter.query = function (params, callback) {
       The results adapter controls the list of results that the user can select
       from. While the results adapter does not define any additional methods
       that must be implemented, it makes extensive use of the Select2 event
-      system for cotrolling the display of results and messages.
+      system for controlling the display of results and messages.
     </p>
 
     <dl class="dl-horizontal">

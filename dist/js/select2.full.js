@@ -10766,18 +10766,39 @@ define('select2/selection/eventRelay',[
 
   EventRelay.prototype.bind = function (decorated, container, $container) {
     var self = this;
-    var relayEvents = ['open', 'close'];
+    var relayEvents = [
+      'open', 'opening',
+      'close', 'closing',
+      'select', 'selecting',
+      'unselect', 'unselecting'
+    ];
+
+    var preventableEvents = ['opening', 'closing', 'selecting', 'unselecting'];
 
     decorated.call(this, container, $container);
 
     container.on('*', function (name, params) {
+      // Ignore events that should not be relayed
       if (relayEvents.indexOf(name) === -1) {
         return;
       }
 
-      var evt = $.Event('select2:' + name, params);
+      // The parameters should always be an object
+      params = params || {};
+
+      // Generate the jQuery event for the Select2 event
+      var evt = $.Event('select2:' + name, {
+        params: params
+      });
 
       self.$element.trigger(evt);
+
+      // Only handle preventable events if it was one
+      if (preventableEvents.indexOf(name) === -1) {
+        return;
+      }
+
+      params.prevented = evt.isDefaultPrevented();
     });
   };
 
@@ -11859,9 +11880,19 @@ define('select2/data/select',[
   };
 
   SelectAdapter.prototype.option = function (data) {
-    var option = document.createElement('option');
+    var option;
 
-    option.value = data.id;
+    if (data.children) {
+      option = document.createElement('optgroup');
+      option.label = data.text;
+    } else {
+      option = document.createElement('option');
+      option.innerText = data.text;
+    }
+
+    if (data.id) {
+      option.value = data.id;
+    }
 
     if (data.disabled) {
       option.disabled = true;
@@ -11870,8 +11901,6 @@ define('select2/data/select',[
     if (data.selected) {
       option.selected = true;
     }
-
-    option.innerText = data.text;
 
     var $option = $(option);
 
@@ -11902,7 +11931,7 @@ define('select2/data/select',[
       };
     } else if ($option.is('optgroup')) {
       data = {
-        text: $option.attr('label'),
+        text: $option.prop('label'),
         children: []
       };
 
@@ -11975,11 +12004,11 @@ define('select2/data/array',[
   'jquery'
 ], function (SelectAdapter, Utils, $) {
   function ArrayAdapter ($element, options) {
-    var data = options.get('data');
+    var data = options.get('data') || [];
 
     ArrayAdapter.__super__.constructor.call(this, $element, options);
 
-    this.convertToOptions(data);
+    $element.append(this.convertToOptions(data));
   }
 
   Utils.Extend(ArrayAdapter, SelectAdapter);
@@ -12004,6 +12033,8 @@ define('select2/data/array',[
       return self.item($(this)).id;
     }).get();
 
+    var $options = [];
+
     // Filter out all items except for the one passed in the argument
     function onlyItem (item) {
       return function () {
@@ -12012,8 +12043,7 @@ define('select2/data/array',[
     }
 
     for (var d = 0; d < data.length; d++) {
-      var item = data[d];
-      item.id = item.id.toString();
+      var item = this._normalizeItem(data[d]);
 
       // Skip items which were pre-loaded, only merge the data
       if (existingIds.indexOf(item.id) >= 0) {
@@ -12031,8 +12061,16 @@ define('select2/data/array',[
 
       var $option = this.option(item);
 
-      this.$element.append($option);
+      if (item.children) {
+        var $children = this.convertToOptions(item.children);
+
+        $option.append($children);
+      }
+
+      $options.push($option);
     }
+
+    return $options;
   };
 
   return ArrayAdapter;
@@ -12370,6 +12408,38 @@ define('select2/data/maximumInputLength',[
   return MaximumInputLength;
 });
 
+define('select2/data/maximumSelectionLength',[
+
+], function (){
+  function MaximumSelectionLength (decorated, $e, options) {
+    this.maximumSelectionLength = options.get('maximumSelectionLength');
+
+    decorated.call(this, $e, options);
+  }
+
+  MaximumSelectionLength.prototype.query =
+    function (decorated, params, callback) {
+      var self = this;
+
+      this.current(function (currentData) {
+        var count = currentData != null ? currentData.length : 0;
+        if (self.maximumSelectionLength > 0 &&
+          count >= self.maximumSelectionLength) {
+          self.trigger('results:message', {
+            message: 'maximumSelected',
+            args: {
+              maximum: self.maximumSelectionLength
+            }
+          });
+          return;
+        }
+        decorated.call(self, params, callback);
+      });
+  };
+
+  return MaximumSelectionLength;
+});
+
 define('select2/dropdown',[
   './utils'
 ], function (Utils) {
@@ -12694,7 +12764,8 @@ define('select2/dropdown/attachBody',[
     $dropdown.addClass('select2-container--open');
 
     $dropdown.css({
-      position: 'absolute'
+      position: 'absolute',
+      top: -999999
     });
 
     $dropdown.width($container.outerWidth(false));
@@ -12825,6 +12896,34 @@ define('select2/dropdown/minimumResultsForSearch',[
   return MinimumResultsForSearch;
 });
 
+define('select2/dropdown/selectOnClose',[
+
+], function () {
+  function SelectOnClose () { }
+
+  SelectOnClose.prototype.bind = function (decorated, container, $container) {
+    var self = this;
+
+    decorated.call(this, container, $container);
+
+    container.on('close', function () {
+      self._handleSelectOnClose();
+    });
+  };
+
+  SelectOnClose.prototype._handleSelectOnClose = function () {
+    var $highlightedResults = this.getHighlightedResults();
+
+    if ($highlightedResults.length < 1) {
+      return;
+    }
+
+    $highlightedResults.trigger('mouseup');
+  };
+
+  return SelectOnClose;
+});
+
 define('select2/i18n/en',[],function () {
   // English
   return {
@@ -12892,6 +12991,7 @@ define('select2/defaults',[
   './data/tokenizer',
   './data/minimumInputLength',
   './data/maximumInputLength',
+  './data/maximumSelectionLength',
 
   './dropdown',
   './dropdown/search',
@@ -12899,6 +12999,7 @@ define('select2/defaults',[
   './dropdown/infiniteScroll',
   './dropdown/attachBody',
   './dropdown/minimumResultsForSearch',
+  './dropdown/selectOnClose',
 
   './i18n/en'
 ], function ($, ResultsList,
@@ -12909,10 +13010,10 @@ define('select2/defaults',[
              Utils, Translation, DIACRITICS,
 
              SelectData, ArrayData, AjaxData, Tags, Tokenizer,
-             MinimumInputLength, MaximumInputLength,
+             MinimumInputLength, MaximumInputLength, MaximumSelectionLength,
 
              Dropdown, DropdownSearch, HidePlaceholder, InfiniteScroll,
-             AttachBody, MinimumResultsForSearch,
+             AttachBody, MinimumResultsForSearch, SelectOnClose,
 
              EnglishTranslation) {
   function Defaults () {
@@ -12945,6 +13046,13 @@ define('select2/defaults',[
         );
       }
 
+      if (options.maximumSelectionLength > 0) {
+        options.dataAdapter = Utils.Decorate(
+          options.dataAdapter,
+          MaximumSelectionLength
+        );
+      }
+
       if (options.tags != null) {
         options.dataAdapter = Utils.Decorate(options.dataAdapter, Tags);
       }
@@ -12954,6 +13062,58 @@ define('select2/defaults',[
           options.dataAdapter,
           Tokenizer
         );
+      }
+
+      if (options.query != null) {
+        if (console && console.warn) {
+          console.warn(
+            'Select2: The `query` option has been deprecated in favor of a ' +
+            'custom data adapter that overrides the `query` method. Support ' +
+            'will be removed for the `query` option in future versions of ' +
+            'Select2.'
+          );
+        }
+
+        options.dataAdapter.prototype.query = function (params, callback) {
+          params.callback = callback;
+
+          options.query.call(null, params);
+        };
+      }
+
+      if (options.initSelection != null) {
+        if (console && console.warn) {
+          console.warn(
+            'Select2: The `initSelection` option has been deprecated in favor' +
+            ' of a custom data adapter that overrides the `current` method. ' +
+            'This method is now called multiple times instead of a single ' +
+            'time when the instance is initialized. Support will be removed ' +
+            'for the `initSelection` option in future versions of Select2'
+          );
+        }
+
+        var oldCurrent = options.dataAdapter.prototype.current;
+        var newCurrent = function (callback) {
+          var self = this;
+
+          if (this._isInitialized) {
+            oldCurrent.call(this, callback);
+
+            return;
+          }
+
+          options.initSelection.call(null, this.$element, function (data) {
+            self._isInitialized = true;
+
+            if (!$.isArray(data)) {
+              data = [data];
+            }
+
+            callback(data);
+          });
+        };
+
+        options.dataAdapter.prototype.current = newCurrent;
       }
     }
 
@@ -12988,6 +13148,13 @@ define('select2/defaults',[
         options.dropdownAdapter = Utils.Decorate(
           options.dropdownAdapter,
           MinimumResultsForSearch
+        );
+      }
+
+      if (options.selectOnClose) {
+        options.dropdownAdapter = Utils.Decorate(
+          options.dropdownAdapter,
+          SelectOnClose
         );
       }
 
@@ -13051,7 +13218,7 @@ define('select2/defaults',[
           language = Translation.loadPath(name);
         } catch (e) {
           // If we couldn't load it, check if it wasn't the full path
-          name = 'select2/i18n/' + name;
+          name = this.defaults.amdLanguageBase + name;
           language = Translation.loadPath(name);
         }
 
@@ -13122,21 +13289,26 @@ define('select2/defaults',[
     }
 
     this.defaults = {
+      amdBase: 'select2/',
+      amdLanguageBase: 'select2/i18n/',
       language: EnglishTranslation,
       matcher: matcher,
+      minimumInputLength: 0,
+      maximumInputLength: 0,
+      maximumSelectionLength: 0,
+      minimumResultsForSearch: 0,
+      selectOnClose: false,
       sorter: function (data) {
         return data;
       },
-      minimumInputLength: 0,
-      maximumInputLength: 0,
-      minimumResultsForSearch: 0,
       templateResult: function (result) {
         return result.text;
       },
       templateSelection: function (selection) {
         return selection.text;
       },
-      theme: 'default'
+      theme: 'default',
+      width: 'resolve'
     };
   };
 
@@ -13385,7 +13557,57 @@ define('select2/core',[
 
   Select2.prototype._placeContainer = function ($container) {
     $container.insertAfter(this.$element);
-    $container.width(this.$element.outerWidth(false));
+
+    var width = this._resolveWidth(this.$element, this.options.get('width'));
+
+    if (width != null) {
+      $container.css('width', width);
+    }
+  };
+
+  Select2.prototype._resolveWidth = function ($element, method) {
+    var WIDTH = /^width:(([-+]?([0-9]*\.)?[0-9]+)(px|em|ex|%|in|cm|mm|pt|pc))/i;
+
+    if (method == 'resolve') {
+      var styleWidth = this._resolveWidth($element, 'style');
+
+      if (styleWidth != null) {
+        return styleWidth;
+      }
+
+      return this._resolveWidth($element, 'element');
+    }
+
+    if (method == 'element') {
+      var elementWidth = $element.outerWidth(false);
+
+      if (elementWidth <= 0) {
+        return 'auto';
+      }
+
+      return elementWidth + 'px';
+    }
+
+    if (method == 'style') {
+      var style = $element.attr('style');
+
+      if (typeof(style) !== 'string') {
+        return null;
+      }
+
+      var attrs = style.split(';');
+
+      for (i = 0, l = attrs.length; i < l; i = i + 1) {
+        attr = attrs[i].replace(/\s/g, '');
+        var matches = attr.match(WIDTH);
+
+        if (matches !== null && matches.length >= 1) {
+          return matches[1];
+        }
+      }
+    }
+
+    return method;
   };
 
   Select2.prototype._bindAdapters = function () {
@@ -13544,13 +13766,46 @@ define('select2/core',[
 
     if (this.options.get('disabled')) {
       if (this.isOpen()) {
-        this.trigger('close');
+        this.close();
       }
 
       this.trigger('disable');
     } else {
       this.trigger('enable');
     }
+  };
+
+  /**
+   * Override the trigger method to automatically trigger pre-events when
+   * there are events that can be prevented.
+   */
+  Select2.prototype.trigger = function (name, args) {
+    var actualTrigger = Select2.__super__.trigger;
+    var preTriggerMap = {
+      'open': 'opening',
+      'close': 'closing',
+      'select': 'selecting',
+      'unselect': 'unselecting'
+    };
+
+    if (name in preTriggerMap) {
+      var preTriggerName = preTriggerMap[name];
+      var preTriggerArgs = {
+        prevented: false,
+        name: name,
+        args: args
+      };
+
+      actualTrigger.call(this, preTriggerName, preTriggerArgs);
+
+      if (preTriggerArgs.prevented) {
+        args.prevented = true;
+
+        return;
+      }
+    }
+
+    actualTrigger.call(this, name, args);
   };
 
   Select2.prototype.toggleDropdown = function () {
@@ -13967,7 +14222,7 @@ define('select2/dropdown/attachContainer',[
 
 define('jquery.select2',[
   'jquery',
-  'select2/core'
+  './select2/core'
 ], function ($, Select2) {
   // Force jQuery.mousewheel to be loaded if it hasn't already
   try {

@@ -395,8 +395,28 @@ $(".js-programmatic-multi-clear").on("click", function () { $exampleMulti.val(nu
 </script>
     </div>
   </section>
+  <section id="multiple_max" class="row">
+    <div class="col-md-4">
+      <h1>Limiting the number of selections</h1>
+      <p>Select2 multi-value select boxes can set restrictions regarding the maximum number of options selected.
+        The select below is declared with the <code>multiple</code> attribute with <code>maxSelectionLength</code> in the select2 options</p>
 
-  <!-- Hidden until 4.0.0-beta.2 is released
+      <p>
+        <select class="js-example-basic-multiple-limit js-states form-control" multiple="multiple"></select>
+      </p>
+    </div>
+    <div class="col-md-8">
+      <h2>Example code</h2>
+
+      <pre data-fill-from=".js-code-multiple-limit"></pre>
+
+<script type="text/x-example-code" class="js-code-multiple-limit">
+$(".js-example-basic-multiple-limit").select2({
+  maximumSelectionLength: 2
+});
+</script>
+    </div>
+  </section>
 
   <section id="events" class="row">
     <div class="col-md-4">
@@ -423,10 +443,22 @@ $(".js-programmatic-multi-clear").on("click", function () { $exampleMulti.val(nu
 
       <p>
         <code>select2:open</code> is fired whenever the dropdown is opened.
+        <code>select2:opening</code> is fired before this and can be prevented.
       </p>
 
       <p>
         <code>select2:close</code> is fired whenever the dropdown is closed.
+        <code>select2:closing</code> is fired before this and can be prevented.
+      </p>
+
+      <p>
+        <code>select2:select</code> is fired whenever a result is selected.
+        <code>select2:selecting</code> is fired before this and can be prevented.
+      </p>
+
+      <p>
+        <code>select2:unselect</code> is fired whenever a result is unselected.
+        <code>select2:unselecting</code> is fired before this and can be prevented.
       </p>
     </div>
     <div class="col-md-8">
@@ -440,14 +472,24 @@ $(".js-programmatic-multi-clear").on("click", function () { $exampleMulti.val(nu
 var $eventLog = $(".js-event-log");
 var $eventSelect = $(".js-example-events");
 
-$eventSelect.on("select2:open", function (e) { log("select2:open"); });
-$eventSelect.on("select2:close", function (e) { log("select2:close"); });
+$eventSelect.on("select2:open", function (e) { log("select2:open", e); });
+$eventSelect.on("select2:close", function (e) { log("select2:close", e); });
+$eventSelect.on("select2:select", function (e) { log("select2:select", e); });
+$eventSelect.on("select2:unselect", function (e) { log("select2:unselect", e); });
 
 $eventSelect.on("change", function (e) { log("change"); });
 
-function log (name, args) {
-  args = args || {};
-  var $e = $("<li>" + name + " -> " + JSON.stringify(args) + "</li>");
+function log (name, evt) {
+  if (!evt) {
+    var args = "{}";
+  } else {
+    var args = JSON.stringify(evt.params, function (key, value) {
+      if (value && value.nodeName) return "[DOM node]";
+      if (value instanceof $.Event) return "[$.Event]";
+      return value;
+    });
+  }
+  var $e = $("<li>" + name + " -> " + args + "</li>");
   $eventLog.append($e);
   $e.animate({ opacity: 1 }, 10000, 'linear', function () {
     $e.animate({ opacity: 0 }, 2000, 'linear', function () {
@@ -458,7 +500,6 @@ function log (name, args) {
 </script>
     </div>
   </section>
-  -->
 
   <section id="tags" class="row">
     <div class="col-md-4">
@@ -622,7 +663,7 @@ $(".js-example-diacritics").select2();
 
       <p>
         Select2 supports displaying the messages in different languages, as well
-        as provding your own
+        as providing your own
         <a href="options.html#language">custom messages</a>
         that can be displayed.
       </p>
@@ -812,6 +853,7 @@ $.fn.select2.amd.require(
     function (Select2, Utils, oldMatcher) {
   var $basicSingle = $(".js-example-basic-single");
   var $basicMultiple = $(".js-example-basic-multiple");
+  var $limitMultiple = $(".js-example-basic-multiple-limit");
 
   var $dataArray = $(".js-example-data-array");
   var $dataArraySelected = $(".js-example-data-array-selected");
@@ -830,7 +872,10 @@ $.fn.select2.amd.require(
   var $language = $(".js-example-language");
 
   $basicSingle.select2();
-  $basicMultiple.select2()
+  $basicMultiple.select2();
+  $limitMultiple.select2({
+    maximumSelectionLength: 2
+  });
 
   $dataArray.select2({
     data: data
@@ -903,7 +948,7 @@ $.fn.select2.amd.require(
   $(".js-example-programmatic").select2();
   $(".js-example-programmatic-multi").select2();
 
-  //$eventSelect.select2();
+  $eventSelect.select2();
 
   $tags.select2({
     tags: ['red', 'blue', 'green']
