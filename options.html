@@ -102,6 +102,60 @@ $("select").select2({
       HTML5 data attributes.
     </p>
 
+    <h2 id="amd">
+      AMD compatibility
+    </h2>
+
+    <p>
+      You can find more information on how to integrate Select2 with your
+      existing AMD-based project by
+      <a href="announcements-4.0.html#amd-builds">viewing the 4.0 release notes</a>.
+      Select2 automatically loads some modules when the adapters are being
+      automatically constructed, so those who are using Select2 with a custom
+      AMD build using their own system will need to specify the pathes that are
+      generated to the Select2 modules.
+    </p>
+
+    <div class="row">
+      <div class="col-sm-6">
+        <dl class="dl-horizontal">
+          <dt>Key</dt>
+          <dd>
+            <code>amdBase</code>
+          </dd>
+
+          <dt>Default</dt>
+          <dd>
+            <code>select2/</code>
+          </dd>
+        </dl>
+      </div>
+      <div class="col-sm-6">
+        <dl class="dl-horizontal">
+          <dt>Key</dt>
+          <dd>
+            <code>amdLanguageBase</code>
+          </dd>
+
+          <dt>Default</dt>
+          <dd>
+            <code>select2/i18n/</code>
+          </dd>
+        </dl>
+      </div>
+    </div>
+
+    <p>
+      If you are using Select2 in your own code base with your own AMD build
+      system, it is recommended to use the full source of Select2 instead of the
+      custom AMD build (<code>select2.amd.js</code>). This will allow you to
+      apply your own build steps, such as minification and concatenation,
+      independent of the Select2 defaults. You will need to set the path to the
+      source directories in the <code>amdBase</code> and
+      <code>amdLanguage</code> base options, which can be set globally through
+      <a href="#defaults">the default options</a>.
+    </p>
+
     <h2>
       Display
     </h2>
@@ -369,7 +423,7 @@ placeholder: {
       the one below.
     </p>
 
-<pre class="prettyprint">
+<pre class="prettyprint linenums">
 language: {
   // You can find all of the options in the language files provided in the
   // build. They all must be functions that return the string that should be
@@ -463,7 +517,7 @@ language: {
       custom options that Select2 will intercept, allowing you to customize the
       request as it is being made.
 
-<pre class="prettyprint">
+<pre class="prettyprint linenums">
 ajax: {
   // The number of milliseconds to wait for the user to stop typing before
   // issuing the ajax request.
@@ -561,6 +615,70 @@ ajax: {
       This is the <strong>same as how <a href="#data">array data</a>
       works</strong>, and has similar limitations.
     </p>
+
+    <h3 id="matcher">
+      Change how options are matched when searching
+    </h3>
+
+    <p>
+      When users filter down the results by entering search terms into the
+      search box, Select2 uses an internal "matcher" to match search terms to
+      results. <strong>When a remote data set is used, Select2 expects that the
+      returned results have already been filtered.</strong>
+    </p>
+
+    <dl class="dl-horizontal">
+      <dt>Key</dt>
+      <dd>
+        <code>matcher</code>
+      </dd>
+
+      <dt>Value</dt>
+      <dd>
+        A function taking search <code>params</code> and the
+        <code>data</code> object.
+      </dd>
+    </dl>
+
+    <p>
+      Select2 will pass the individual data objects that have been passed back
+      from the data adapter into the <code>matcher</code> individually to
+      determine if they should be displayed. Only the first-level objects will
+      be passed in, so <strong>if you are working with nested data, you need to
+      match those individually</strong>.
+    </p>
+
+<pre class="prettyprint linenums">
+matcher: function (params, data) {
+  // If there are no search terms, return all of the data
+  if ($.trim(params.term) === '') {
+    return data;
+  }
+
+  // `params.term` should be the term that is used for searching
+  // `data.text` is the text that is displayed for the data object
+  if (data.text.indexOf(params.term) > -1) {
+    var modifiedData = $.extend({}, data, true);
+    modifiedData.text += ' (matched)';
+
+    // You can return modified objects from here
+    // This includes matching the `children` how you want in nested data sets
+    return modifiedData;
+  }
+
+  // Return `null` if the term should not be displayed
+  return null;
+}
+</pre>
+
+    <p>
+      This allows for more advanced matching when working with nested objects,
+      allowing you to handle them however you want. For those who are not
+      looking to implement highly customized matching, but instead are just
+      looking to change the matching algorithm for the text, a
+      <a href="#compat-matcher">compatibility modules</a> has been created to
+      make it easier.
+    </p>
   </section>
 
   <section id="dropdown">
@@ -634,17 +752,29 @@ ajax: {
       it will appear in the same location within the DOM as the rest of Select2.
     </p>
 
-    <dl class="dl-horizontal">
-      <dt>Adapter</dt>
-      <dd>
-        <code title="select2/dropdown">DropdownAdapter</code>
-      </dd>
+    <div class="row">
+      <div class="col-sm-4">
+        <dl class="dl-horizontal">
+          <dt>Adapter</dt>
+          <dd>
+            <code title="select2/dropdown">DropdownAdapter</code>
+          </dd>
 
-      <dt>Decorator</dt>
-      <dd>
-        <code title="select2/dropdown/attachContainer">AttachContainer</code>
-      </dd>
-    </dl>
+          <dt>Decorator</dt>
+          <dd>
+            <code title="select2/dropdown/attachContainer">AttachContainer</code>
+          </dd>
+        </dl>
+      </div>
+
+      <div class="col-sm-8">
+        <div class="alert alert-warning">
+          <strong>Check your build.</strong> This module is only included in the
+          <a href="index.html#builds-full" class="alert-link">full builds</a> of
+          Select2.
+        </div>
+      </div>
+    </div>
 
     <div class="alert alert-info">
       <strong>
@@ -680,6 +810,30 @@ ajax: {
       A search box is added to the top of the dropdown automatically for select
       boxes where only a single option can be selected.
     </p>
+
+    <h2 id="dropdown-select-on-close">
+      Select the highlighted option on close
+    </h2>
+
+    <p>
+      When users close the dropdown, the last highlighted option can be
+      automatically selected. This is commonly used in combination with
+      <a href="#tags">tagging</a> and <a href="#placeholder">placeholders</a>
+      and other situations where the user is required to select an option, or
+      they need to be able to quickly select multiple options.
+    </p>
+
+    <dl class="dl-horizontal">
+      <dt>Adapter</dt>
+      <dd>
+        <code title="select2/results">ResultsAdapter</code>
+      </dd>
+
+      <dt>Decorator</dt>
+      <dd>
+        <code title="select2/dropdown/selectOnClose">SelectOnClose</code>
+      </dd>
+    </dl>
   </section>
 
   <section id="events">
@@ -941,6 +1095,216 @@ DataAdapter.query = function (params, callback) {
         <code title="select2/results">ResultsAdapter</code>
       </dd>
     </dl>
+  </section>
+
+  <section id="defaults">
+    <div class="page-header">
+      <h1>Setting default options</h1>
+    </div>
+
+    <p>
+      In some cases, you need to set the default options for all instances of
+      Select2 in your web application. This is especially useful when you are
+      migrating from past versions of Select2, or you are using non-standard
+      options <a href="#amd">like custom AMD builds</a>. Select2 exposes the
+      default options through <code>$.fn.select2.defaults</code>, which allows
+      you to set them globally.
+    </p>
+
+    <p>
+      When setting options globally, any past defaults that have been set will
+      be overriden. Default options are only used when an option is requested
+      that has not been set during initialization.
+    </p>
+
+    <p>
+      <strong>You can set default options</strong> by calling
+      <code>$.fn.select2.defaults.set("key", "value")</code>. The key that is
+      set should take the same format as keys set using
+      <a href="#data-attributes">HTML <code>data-*</code> attributes</a> which
+      means that two dashes (<code>--</code>) will be replaced by a level of
+      nesting, and a single dash (<code>-</code>) will convert it to a camelCase
+      string.
+    </p>
+
+<pre class="prettyprint linenums">
+$.fn.select2.default2.set("theme", "classic");
+</pre>
+
+    <p>
+      <strong>You can reset the default options</strong> by calling
+      <code>$.fn.select2.defaults.reset()</code>.
+    </p>
+  </section>
+
+  <section id="compatibility">
+    <div class="page-header">
+      <h1>Backwards compatibility</h1>
+    </div>
+
+    <p>
+      Select2 offers limited backwards compatibility with the previously 3.5.x
+      release line, allowing people more efficiently transfer across releases
+      and get the latest features. For many of the larger changes, such as the
+      change in how custom data adapters work, compatibility modules were
+      created that will be used to assist in the upgrade process. It is not
+      recommended to rely on these compatibility modules, as they will not
+      always exist, but they make upgrading easier for major changes.
+    </p>
+
+    <p>
+      <strong>The compatibility modules are only included in the
+      <a href="index.html#builds-full" class="alert-link">full builds</a> of
+      Select2</strong>. These files end in <code>.full.js</code>, and the
+      compatibility modules are prefixed with <code>select2/compat</code>.
+    </p>
+
+    <h2 id="compat-matcher">
+      Simplified function for matching data objects
+    </h2>
+
+    <p class="alert alert-info">
+      <a href="announcements-4.0.html#new-matcher" class="alert-link">Added in Select2 4.0.0.</a>
+      This method was added to make upgrading easier from earlier versions of
+      Select2.
+    </p>
+
+    <p>
+      During the <a href="announcements-4.0.html">Select2 4.0.0 release</a>, the
+      <code>matcher</code> function was changed to allow for more complex
+      matching of nested objects.
+    </p>
+
+    <div class="row">
+      <div class="col-sm-6">
+        <dl class="dl-horizontal">
+          <dt>Key</dt>
+          <dd>
+            <code>matcher</code>
+          </dd>
+
+          <dt>Value</dt>
+          <dd>
+            A function taking a search <code>term</code> and the data object
+            <code>text</code>.
+          </dd>
+        </dl>
+      </div>
+
+      <div class="col-sm-6">
+        <dl class="dl-horizontal">
+          <dt>Adapter</dt>
+          <dd>
+            <code title="select2/compat/matcher">oldMatcher</code>
+          </dd>
+        </dl>
+      </div>
+    </div>
+
+    <p>
+      The <a href="examples.html#matcher">custom matcher example</a> provides a
+      guide for how to use this in your own application. For those upgrading
+      from older versions of Select2, you just need to wrap your old
+      <code>matcher</code> with this function to maintain compatibility.
+    </p>
+
+    <h2 id="initSelection">
+      Old initial selections with <code>initSelection</code>
+    </h2>
+
+    <p class="alert alert-warning">
+      <a href="announcements-4.0.html#removed-initselection" class="alert-link">Deprecated in Select2 4.0.</a>
+      This has been replaced by another option and is only available in the
+      <a href="index.html#builds-full" class="alert-link">full builds</a> of
+      Select2.
+    </p>
+
+    <p>
+      In the past, Select2 required an option called <code>initSelection</code>
+      that was defined whenever a custom data source was being used, allowing
+      for the initial selection for the component to be determined. This has
+      been replaced by the <code>current</code> method on the
+      <a href="#dataAdapter">data adapter</a>.
+    </p>
+
+    <div class="row">
+      <div class="col-sm-6">
+        <dl class="dl-horizontal">
+          <dt>Key</dt>
+          <dd>
+            <code>initSelection</code>
+          </dd>
+
+          <dt>Value</dt>
+          <dd>
+            A function taking a <code>callback</code>
+          </dd>
+        </dl>
+      </div>
+
+      <div class="col-sm-6">
+        <dl class="dl-horizontal">
+          <dt>Adapter</dt>
+          <dd>
+            <code title="select2/data/base">DataAdapter</code>
+          </dd>
+
+          <dt>Decorator</dt>
+          <dd>
+            <code title="select2/compat/initSelection">InitSelection</code>
+          </dd>
+        </dl>
+      </div>
+    </div>
+
+    <h2 id="query">
+      Querying old data with <code>query</code>
+    </h2>
+
+    <p class="alert alert-warning">
+      <a href="announcements-4.0.html#query-to-data-adapter" class="alert-link">Deprecated in Select2 4.0.</a>
+      This has been replaced by another option and is only available in the
+      <a href="index.html#builds-full" class="alert-link">full builds</a> of
+      Select2.
+    </p>
+
+    <p>
+      In the past, Select2 supported an option called <code>query</code> that
+      allowed for a custom data source to be used. This option has been replaced
+      by the <code>query</code> method on the
+      <a href="#dataAdapter">data adapter</a> and takes a very similar set of
+      parameters.
+    </p>
+
+    <div class="row">
+      <div class="col-sm-6">
+        <dl class="dl-horizontal">
+          <dt>Key</dt>
+          <dd>
+            <code>query</code>
+          </dd>
+
+          <dt>Value</dt>
+          <dd>
+            A function taking <code>params</code> (including a <code>callback</code>)
+          </dd>
+        </dl>
+      </div>
+
+      <div class="col-sm-6">
+        <dl class="dl-horizontal">
+          <dt>Adapter</dt>
+          <dd>
+            <code title="select2/data/base">DataAdapter</code>
+          </dd>
+
+          <dt>Decorator</dt>
+          <dd>
+            <code title="select2/compat/query">Query</code>
+          </dd>
+        </dl>
+      </div>
+    </div>
   </section>
 </div>
 
