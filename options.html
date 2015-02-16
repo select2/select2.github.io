@@ -76,7 +76,10 @@ $("select").select2({
     <p>
       You can also define nested configurations, which are typically needed for
       options such as AJAX. Each level of nesting should be separated by two
-      dashes (<code>--</code>) instead of one.
+      dashes (<code>--</code>) instead of one. Due to
+      <a href="https://github.com/jquery/jquery/issues/2070">a jQuery bug</a>,
+      nested options using <code>data-*</code> attributes
+      <a href="https://github.com/select2/select2/issues/2969">do not work in jQuery 1.x</a>.
     </p>
 
 <pre class="prettyprint linenums">
@@ -88,12 +91,12 @@ $("select").select2({
     </p>
 
 <pre class="prettyprint linenums">
-  $("select").select2({
-    ajax: {
-      url: "http://example.org/api/test",
-      cache: "true"
-    }
-  });
+$("select").select2({
+  ajax: {
+    url: "http://example.org/api/test",
+    cache: "true"
+  }
+});
 </pre>
 
     <p>
@@ -112,7 +115,7 @@ $("select").select2({
       <a href="announcements-4.0.html#amd-builds">viewing the 4.0 release notes</a>.
       Select2 automatically loads some modules when the adapters are being
       automatically constructed, so those who are using Select2 with a custom
-      AMD build using their own system will need to specify the pathes that are
+      AMD build using their own system will need to specify the paths that are
       generated to the Select2 modules.
     </p>
 
@@ -350,7 +353,7 @@ placeholder: {
             <tr>
               <td>Anything else</td>
               <td>
-                The value of the <code>width</code> option is diretly set as the width of the container.
+                The value of the <code>width</code> option is directly set as the width of the container.
               </td>
             </tr>
           </tbody>
@@ -433,6 +436,112 @@ language: {
   }
 }
 </pre>
+
+    <h3 id="templating">
+      Templating results and selections
+    </h3>
+
+    <p>
+      By default, Select2 will display the option text within the list of
+      results and when the option has been selected.  Select2 comes with options
+      that allow you to further customize the display of results and selections,
+      allowing you to display them however you want.
+    </p>
+
+    <h4 id="templateSelection">
+      Customizing the display of selections
+    </h4>
+
+    <p>
+      When an option is displayed after it has been selected, it is passed
+      through a formatting function that determines what is displayed. By
+      default, the function only returns the <code>text</code> key of the data
+      object.
+    </p>
+
+    <dl class="dl-horizontal">
+      <dt>Key</dt>
+      <dd><code>templateSelection</code></dd>
+
+      <dt>Value</dt>
+      <dd>A function taking a <code>selection</code> object</dd>
+    </dl>
+
+    <div class="alert alert-info">
+      <strong>Anything rendered as a selection is templated.</strong>
+      This includes placeholders and pre-existing selections that are displayed,
+      so you must ensure that your templating functions can support them.
+    </div>
+
+    <p>
+      The <code>templateSelection</code> function should return a string
+      containing the text to be displayed, or an object (such as a jQuery
+      object) that contains the data that should be displayed.
+    </p>
+
+    <p>
+      <strong>Strings are assumed to contain only text</strong> and will be
+      passed through the <code>escapeMarkup</code> function, which strips any
+      HTML markup.
+    </p>
+
+    <p>
+      <strong>
+        Anything else will be passed
+        <a href="https://api.jquery.com/append/">directly to <code>jQuery.fn.append</code></a>
+      </strong> and will be handled directly by jQuery.  Any markup, such as
+      HTML, returned will not be escaped and it is up to you to escape any
+      malicious input provided by users.
+    </p>
+
+    <h4 id="templateResult">
+      Customizing the display of results
+    </h4>
+
+    <p>
+      When an option is displayed after it has been selected, it is passed
+      through a formatting function that determines what is displayed. By
+      default, the function only returns the <code>text</code> key of the data
+      object.
+    </p>
+
+    <dl class="dl-horizontal">
+      <dt>Key</dt>
+      <dd><code>templateSelection</code></dd>
+
+      <dt>Value</dt>
+      <dd>A function taking a <code>selection</code> object</dd>
+    </dl>
+
+    <div class="alert alert-info">
+      <strong>Anything rendered in the results is templated.</strong>
+      This includes results such as the "Searching..." and "Loading more..."
+      text which will periodically be displayed, which allows you to add more
+      advanced formatting to these automatically generated options.
+    </div>
+
+    <p>
+      The <code>templateResult</code> function should return a string
+      containing the text to be displayed, or an object (such as a jQuery
+      object) that contains the data that should be displayed.  It can also
+      return <code>null</code>, which will prevent the option from being
+      displayed in the results list.
+    </p>
+
+    <p>
+      <strong>Strings are assumed to contain only text</strong> and will be
+      passed through the <code>escapeMarkup</code> function, which strips any
+      HTML markup.
+    </p>
+
+    <p>
+      <strong>
+        Anything else will be passed
+        <a href="https://api.jquery.com/append/">directly to <code>jQuery.fn.append</code></a>
+      </strong> and will be handled directly by jQuery.  Any markup, such as
+      HTML, returned will not be escaped and it is up to you to escape any
+      malicious input provided by users.
+    </p>
 
     <h2>
       Results
@@ -562,6 +671,25 @@ ajax: {
     return {
       results: data
     };
+  },
+  // You can use a custom AJAX transport function if you do not want to use the
+  // default one provided by jQuery.
+  //
+  // @param params The object containing the parameters used to generate the
+  //   request.
+  // @param success A callback function that takes `data`, the results from the
+  //   request.
+  // @param failure A callback function that indicates that the request could
+  //   not be completed.
+  // @returns An object that has an `abort` function that can be called to abort
+  //   the request if needed.
+  transport: function (params, success, failure) {
+    var $request = $.ajax(params);
+
+    $request.then(success);
+    $request.fail(failure);
+
+    return $request;
   }
 }
 </pre>
@@ -739,7 +867,7 @@ matcher: function (params, data) {
       displaying the dropdown below the container. Select2 will display above
       the container if there is not enough space below the container, but there
       is enough space above it. You are also not limited to displaying the
-      drodown within the parent container, which means Select2 will render
+      dropdown within the parent container, which means Select2 will render
       correctly inside of modals and other small containers.
     </p>
 
@@ -811,6 +939,116 @@ matcher: function (params, data) {
       boxes where only a single option can be selected.
     </p>
 
+    <h3 id="dropdown-minimumInputLength">
+      Minimum search term length to filter results
+    </h3>
+
+    <p>
+      Sometimes when working with large data sets, it is more efficient to start
+      filtering the results when the search term is a certain length. This is
+      very common when working with remote data sets, as allows for only
+      significant search terms to be used.
+    </p>
+
+    <div class="row">
+      <div class="col-sm-6">
+        <dl class="dl-horizontal">
+          <dt>Key</dt>
+          <dd><code>minimumInputLength</code></dd>
+
+          <dt>Value</dt>
+          <dd>integer</dd>
+        </dl>
+      </div>
+
+      <div class="col-sm-6">
+        <dl class="dl-horizontal">
+          <dt>Adapter</dt>
+          <dd>
+            <code title="select2/data/base">DataAdapter</code>
+          </dd>
+
+          <dt>Decorator</dt>
+          <dd>
+            <code title="select2/data/minimumInputLength">MinimumInputLength</code>
+          </dd>
+        </dl>
+      </div>
+    </div>
+
+    <h3 id="dropdown-maximumInputLength">
+      Maximum search term length to filter results
+    </h3>
+
+    <p>
+      In some cases, search terms need to be limited to a certain range. Select2
+      allows you to limit the length of the search term such that it does not
+      exceed a certain length.
+    </p>
+
+    <div class="row">
+      <div class="col-sm-6">
+        <dl class="dl-horizontal">
+          <dt>Key</dt>
+          <dd><code>maximumInputLength</code></dd>
+
+          <dt>Value</dt>
+          <dd>integer</dd>
+        </dl>
+      </div>
+
+      <div class="col-sm-6">
+        <dl class="dl-horizontal">
+          <dt>Adapter</dt>
+          <dd>
+            <code title="select2/data/base">DataAdapter</code>
+          </dd>
+
+          <dt>Decorator</dt>
+          <dd>
+            <code title="select2/data/maximumInputLength">MaximumInputLength</code>
+          </dd>
+        </dl>
+      </div>
+    </div>
+
+    <h3 id="dropdown-maximumInputLength">
+      Minimum results to display the search box
+    </h3>
+
+    <p>
+      When working with smaller data sets, the search box can take up more space
+      that is necessary, as there are not enough results for filtering to be
+      effective. Select2 allows you to only display the search box when the
+      number of search results reaches a certain threshold.
+    </p>
+
+    <div class="row">
+      <div class="col-sm-6">
+        <dl class="dl-horizontal">
+          <dt>Key</dt>
+          <dd><code>minimumResultsForSearch</code></dd>
+
+          <dt>Value</dt>
+          <dd>integer</dd>
+        </dl>
+      </div>
+
+      <div class="col-sm-6">
+        <dl class="dl-horizontal">
+          <dt>Adapter</dt>
+          <dd>
+            <code title="select2/dropdown">DropdownAdapter</code>
+          </dd>
+
+          <dt>Decorator</dt>
+          <dd>
+            <code title="select2/dropdown/minimumResultsForSearch">MinimumResultsForSearch</code>
+          </dd>
+        </dl>
+      </div>
+    </div>
+
     <h2 id="dropdown-select-on-close">
       Select the highlighted option on close
     </h2>
@@ -834,6 +1072,50 @@ matcher: function (params, data) {
         <code title="select2/dropdown/selectOnClose">SelectOnClose</code>
       </dd>
     </dl>
+
+    <h2 id="closeOnSelect">
+      Close the dropdown when a result is selected
+    </h2>
+
+    <p>
+      Select2 will automatically close the dropdown when an element is selected,
+      similar to what is done with a normal select box.  This behavior can be
+      changed though to keep the dropdown open when results are selected,
+      allowing for multiple options to be selected quickly.
+    </p>
+
+    <div class="row">
+      <div class="col-sm-6">
+        <dl class="dl-horizontal">
+          <dt>Key</dt>
+          <dd><code>closeOnSelect</code></dd>
+
+          <dt>Default</dt>
+          <dd><code>true</code></dd>
+        </dl>
+      </div>
+
+      <div class="col-sm-6">
+        <dl class="dl-horizontal">
+          <dt>Adapter</dt>
+          <dd>
+            <code title="select2/dropdown">DropdownAdapter</code>
+          </dd>
+
+          <dt>Decorator</dt>
+          <dd>
+            <code title="select2/dropdown/closeOnSelect">CloseOnSelect</code>
+          </dd>
+        </dl>
+      </div>
+    </div>
+
+    <p>
+      If this decorator is not used (or <code>closeOnSelect</code> is set to
+      <code>false</code>), the dropdown will not automatically close when a
+      result is selected.  The dropdown will also never close if the
+      <kbd>ctrl</kbd> key is held down when the result is selected.
+    </p>
   </section>
 
   <section id="events">
@@ -1128,7 +1410,7 @@ DataAdapter.query = function (params, callback) {
     </p>
 
 <pre class="prettyprint linenums">
-$.fn.select2.default2.set("theme", "classic");
+$.fn.select2.defaults.set("theme", "classic");
 </pre>
 
     <p>

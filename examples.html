@@ -4,8 +4,15 @@ title: Examples - Select2
 slug: examples
 ---
 
-<script type="text/javascript" src="https://jamesallardice.github.io/Placeholders.js/assets/js/placeholders.jquery.min.js"></script>
+<script type="text/javascript" src="vendor/js/placeholders.jquery.min.js"></script>
 <script type="text/javascript" src="dist/js/i18n/es.js"></script>
+
+<style type="text/css">
+.img-flag {
+  height: 15px;
+  width: 18px;
+}
+</style>
 
 <div class="container">
   <section id="basic" class="row">
@@ -93,7 +100,7 @@ $(".js-example-basic-multiple").select2();
       <p>
         Select2 uses the <code>placeholder</code> attribute on multiple select
         boxes, which requires IE 10+. You can support it in older versions with
-        <a href="https://jamesallardice.github.io/Placeholders.js/">the Placeholders.js polyfill</a>.
+        <a href="https://github.com/jamesallardice/Placeholders.js">the Placeholders.js polyfill</a>.
       </p>
 
       <p>
@@ -113,6 +120,52 @@ $(".js-example-placeholder-single").select2({
 
 $(".js-example-placeholder-multiple").select2({
   placeholder: "Select a state"
+});
+</script>
+    </div>
+  </section>
+
+  <section id="templating" class="row">
+    <div class="col-md-4">
+      <h1>Templating</h1>
+
+      <p>
+        Various display options of the Select2 component can be changed
+      </p>
+
+      <p>
+        <select class="js-example-templating js-states form-control"></select>
+      </p>
+
+      <p>
+        You can access the <code>&lt;option&gt;</code> element
+        (or <code>&lt;optgroup&gt;</code>) and any attributes on those elements
+        using <code>.element</code>.
+      </p>
+
+      <p>
+        Templating is primarily controlled by the
+        <a href="options.html#templateResult"><code>templateResult</code></a>
+        and <a href="options.html#templateSelection"><code>templateSelection</code></a>
+        options.
+      </p>
+    </div>
+    <div class="col-md-8">
+      <h2>Example code</h2>
+
+      <pre data-fill-from=".js-code-templating"></pre>
+
+<script type="text/x-example-code" class="js-code-templating">
+function formatState (state) {
+  if (!state.id) { return state.text; }
+  var $state = $(
+    '<span><img src="vendor/images/flags/' + state.element.value.toLowerCase() + '.png" class="img-flag" /> ' + state.text + '</span>'
+  );
+  return $state;
+};
+
+$(".js-example-templating").select2({
+  templateResult: formatState
 });
 </script>
     </div>
@@ -229,6 +282,7 @@ $(".js-data-example-ajax").select2({
     },
     cache: true
   },
+  escapeMarkup: function (markup) { return markup; }, // let our custom formatter work
   minimumInputLength: 1,
   templateResult: formatRepo, // omitted for brevity, see the source of this page
   templateSelection: formatRepoSelection // omitted for brevity, see the source of this page
@@ -914,6 +968,26 @@ $.fn.select2.amd.require(
     maximumSelectionLength: 2
   });
 
+  function formatState (state) {
+    if (!state.id) {
+      return state.text;
+    }
+    var $state = $(
+      '<span>' +
+        '<img src="vendor/images/flags/' +
+          state.element.value.toLowerCase() +
+        '.png" class="img-flag" /> ' +
+        state.text +
+      '</span>'
+    );
+    return $state;
+  };
+
+  $(".js-example-templating").select2({
+    templateResult: formatState,
+    templateSelection: formatState
+  });
+
   $dataArray.select2({
     data: data
   });
@@ -921,6 +995,33 @@ $.fn.select2.amd.require(
   $dataArraySelected.select2({
     data: data
   });
+
+  function formatRepo (repo) {
+    if (repo.loading) return repo.text;
+
+    var markup = '<div class="clearfix">' +
+    '<div class="col-sm-1">' +
+    '<img src="' + repo.owner.avatar_url + '" style="max-width: 100%" />' +
+    '</div>' +
+    '<div clas="col-sm-10">' +
+    '<div class="clearfix">' +
+    '<div class="col-sm-6">' + repo.full_name + '</div>' +
+    '<div class="col-sm-3"><i class="fa fa-code-fork"></i> ' + repo.forks_count + '</div>' +
+    '<div class="col-sm-2"><i class="fa fa-star"></i> ' + repo.stargazers_count + '</div>' +
+    '</div>';
+
+    if (repo.description) {
+      markup += '<div>' + repo.description + '</div>';
+    }
+
+    markup += '</div></div>';
+
+    return markup;
+  }
+
+  function formatRepoSelection (repo) {
+    return repo.full_name || repo.text;
+  }
 
   $ajax.select2({
     ajax: {
@@ -949,32 +1050,10 @@ $.fn.select2.amd.require(
       },
       cache: true
     },
+    escapeMarkup: function (markup) { return markup; },
     minimumInputLength: 1,
-    templateResult: function (repo) {
-      if (repo.loading) return repo.text;
-
-      var markup = '<div class="clearfix">' +
-        '<div class="col-sm-1">' +
-          '<img src="' + repo.owner.avatar_url + '" style="max-width: 100%" />' +
-        '</div>' +
-        '<div clas="col-sm-10">' +
-          '<div class="clearfix">' +
-            '<div class="col-sm-6">' + repo.full_name + '</div>' +
-            '<div class="col-sm-3"><i class="fa fa-code-fork"></i> ' + repo.forks_count + '</div>' +
-            '<div class="col-sm-2"><i class="fa fa-star"></i> ' + repo.stargazers_count + '</div>' +
-          '</div>';
-
-      if (repo.description) {
-         markup += '<div>' + repo.description + '</div>';
-      }
-
-      markup += '</div></div>';
-
-      return markup;
-    },
-    templateSelection: function (repo) {
-      return repo.full_name || repo.text;
-    }
+    templateResult: formatRepo,
+    templateSelection: formatRepoSelection
   });
 
   $(".js-example-disabled").select2();
