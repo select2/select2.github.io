@@ -966,6 +966,16 @@ define('select2/results',[
       self.$results.removeAttr('aria-activedescendant');
     });
 
+    container.on('results:toggle', function () {
+      var $highlighted = self.getHighlightedResults();
+
+      if ($highlighted.length === 0) {
+        return;
+      }
+
+      $highlighted.trigger('mouseup');
+    });
+
     container.on('results:select', function () {
       var $highlighted = self.getHighlightedResults();
 
@@ -976,13 +986,7 @@ define('select2/results',[
       var data = $highlighted.data('data');
 
       if ($highlighted.attr('aria-selected') == 'true') {
-        if (self.options.get('multiple')) {
-          self.trigger('unselect', {
-            data: data
-          });
-        } else {
-          self.trigger('close');
-        }
+        self.trigger('close');
       } else {
         self.trigger('select', {
           data: data
@@ -1532,7 +1536,7 @@ define('select2/selection/multiple',[
       var $selection = this.selectionContainer();
 
       $selection.append(formatted);
-      $selection.prop('title', selection.title);
+      $selection.prop('title', selection.title || selection.text);
 
       $selection.data('data', selection);
 
@@ -1748,7 +1752,16 @@ define('select2/selection/search',[
       }
     });
 
-    this.$selection.on('keyup', '.select2-search--inline', function (evt) {
+    // Workaround for browsers which do not support the `input` event
+    // This will prevent double-triggering of events for browsers which support
+    // both the `keyup` and `input` events.
+    this.$selection.on('input', '.select2-search--inline', function (evt) {
+      // Unbind the duplicated `keyup` event
+      self.$selection.off('keyup.search');
+    });
+
+    this.$selection.on('keyup.search input', '.select2-search--inline',
+        function (evt) {
       self.handleSearch(evt);
     });
   };
@@ -2845,7 +2858,6 @@ define('select2/data/select',[
       var val = data.id;
 
       this.$element.val(val);
-
       this.$element.trigger('change');
     }
   };
@@ -2929,6 +2941,10 @@ define('select2/data/select',[
     callback({
       results: data
     });
+  };
+
+  SelectAdapter.prototype.addOptions = function ($options) {
+    this.$element.append($options);
   };
 
   SelectAdapter.prototype.option = function (data) {
@@ -3071,7 +3087,7 @@ define('select2/data/array',[
 
     ArrayAdapter.__super__.constructor.call(this, $element, options);
 
-    $element.append(this.convertToOptions(data));
+    this.addOptions(this.convertToOptions(data));
   }
 
   Utils.Extend(ArrayAdapter, SelectAdapter);
@@ -3082,7 +3098,7 @@ define('select2/data/array',[
     if ($option.length === 0) {
       $option = this.option(data);
 
-      this.$element.append($option);
+      this.addOptions([$option]);
     }
 
     ArrayAdapter.__super__.select.call(this, data);
@@ -3310,7 +3326,7 @@ define('select2/data/tags',[
         var $option = self.option(tag);
         $option.attr('data-select2-tag', true);
 
-        self.$element.append($option);
+        self.addOptions([$option]);
 
         self.insertTag(data, tag);
       }
@@ -3608,7 +3624,15 @@ define('select2/dropdown/search',[
       self._keyUpPrevented = evt.isDefaultPrevented();
     });
 
-    this.$search.on('keyup', function (evt) {
+    // Workaround for browsers which do not support the `input` event
+    // This will prevent double-triggering of events for browsers which support
+    // both the `keyup` and `input` events.
+    this.$search.on('input', function (evt) {
+      // Unbind the duplicated `keyup` event
+      $(this).off('keyup');
+    });
+
+    this.$search.on('keyup input', function (evt) {
       self.handleSearch(evt);
     });
 
@@ -4066,15 +4090,23 @@ define('select2/dropdown/closeOnSelect',[
     decorated.call(this, container, $container);
 
     container.on('select', function (evt) {
-      var originalEvent = evt.originalEvent;
-
-      // Don't close if the control key is being held
-      if (originalEvent && originalEvent.ctrlKey) {
-        return;
-      }
-
-      self.trigger('close');
+      self._selectTriggered(evt);
     });
+
+    container.on('unselect', function (evt) {
+      self._selectTriggered(evt);
+    });
+  };
+
+  CloseOnSelect.prototype._selectTriggered = function (_, evt) {
+    var originalEvent = evt.originalEvent;
+
+    // Don't close if the control key is being held
+    if (originalEvent && originalEvent.ctrlKey) {
+      return;
+    }
+
+    this.trigger('close');
   };
 
   return CloseOnSelect;
@@ -4274,7 +4306,7 @@ define('select2/defaults',[
         options.dropdownAdapter = SearchableDropdown;
       }
 
-      if (options.minimumResultsForSearch > 0) {
+      if (options.minimumResultsForSearch !== 0) {
         options.dropdownAdapter = Utils.Decorate(
           options.dropdownAdapter,
           MinimumResultsForSearch
@@ -4496,6 +4528,15 @@ define('select2/options',[
     }
 
     this.options = Defaults.apply(this.options);
+
+    if ($element && $element.is('input')) {
+      var InputCompat = require(this.get('amdBase') + 'compat/inputData');
+
+      this.options.dataAdapter = Utils.Decorate(
+        this.options.dataAdapter,
+        InputCompat
+      );
+    }
   }
 
   Options.prototype.fromElement = function ($e) {
@@ -4530,7 +4571,7 @@ define('select2/options',[
     $e.prop('disabled', this.options.disabled);
     $e.prop('multiple', this.options.multiple);
 
-    if ($e.data('select2-tags')) {
+    if ($e.data('select2Tags')) {
       if (window.console && console.warn) {
         console.warn(
           'Select2: The `data-select2-tags` attribute has been changed to ' +
@@ -4539,11 +4580,11 @@ define('select2/options',[
         );
       }
 
-      $e.data('data', $e.data('select2-tags'));
+      $e.data('data', $e.data('select2Tags'));
       $e.data('tags', true);
     }
 
-    if ($e.data('ajax-url')) {
+    if ($e.data('ajaxUrl')) {
       if (window.console && console.warn) {
         console.warn(
           'Select2: The `data-ajax-url` attribute has been changed to ' +
@@ -4552,12 +4593,20 @@ define('select2/options',[
         );
       }
 
-      $e.data('ajax--url', $e.data('ajax-url'));
+      $e.data('ajax-Url', $e.data('ajaxUrl'));
     }
+
+    var dataset = {};
 
     // Prefer the element's `dataset` attribute if it exists
     // jQuery 1.x does not correctly handle data attributes with multiple dashes
-    var data = $.extend(true, {}, $e[0].dataset || $e.data());
+    if ($.fn.jquery && $.fn.jquery.substr(0, 2) == '1.' && $e[0].dataset) {
+      dataset = $.extend(true, {}, $e[0].dataset, $e.data());
+    } else {
+      dataset = $e.data();
+    }
+
+    var data = $.extend(true, {}, dataset);
 
     data = Utils._convertData(data);
 
@@ -4861,6 +4910,10 @@ define('select2/core',[
     });
 
     this.on('query', function (params) {
+      if (!self.isOpen()) {
+        self.trigger('open');
+      }
+
       this.data.query(params, function (data) {
         self.trigger('results:all', {
           data: data,
@@ -4884,6 +4937,10 @@ define('select2/core',[
       if (self.isOpen()) {
         if (key === KEYS.ENTER) {
           self.trigger('results:select');
+
+          evt.preventDefault();
+        } else if ((key === KEYS.SPACE && evt.ctrlKey)) {
+          self.trigger('results:toggle');
 
           evt.preventDefault();
         } else if (key === KEYS.UP) {
@@ -5411,6 +5468,134 @@ define('select2/compat/initSelection',[
   };
 
   return InitSelection;
+});
+
+define('select2/compat/inputData',[
+  'jquery'
+], function ($) {
+  function InputData (decorated, $element, options) {
+    this._currentData = [];
+    this._valueSeparator = options.get('valueSeparator') || ',';
+
+    if ($element.prop('type') === 'hidden') {
+      if (console && console.warn) {
+        console.warn(
+          'Select2: Using a hidden input with Select2 is no longer ' +
+          'supported and may stop working in the future. It is recommended ' +
+          'to use a `<select>` element instead.'
+        );
+      }
+    }
+
+    decorated.call(this, $element, options);
+  }
+
+  InputData.prototype.current = function (_, callback) {
+    function getSelected (data, selectedIds) {
+      var selected = [];
+
+      if (data.selected || $.inArray(data.id, selectedIds) !== -1) {
+        data.selected = true;
+        selected.push(data);
+      } else {
+        data.selected = false;
+      }
+
+      if (data.children) {
+        selected.push.apply(selected, getSelected(data.children, selectedIds));
+      }
+
+      return selected;
+    }
+
+    var selected = [];
+
+    for (var d = 0; d < this._currentData.length; d++) {
+      var data = this._currentData[d];
+
+      selected.push.apply(
+        selected,
+        getSelected(
+          data,
+          this.$element.val().split(
+            this._valueSeparator
+          )
+        )
+      );
+    }
+
+    callback(selected);
+  };
+
+  InputData.prototype.select = function (_, data) {
+    if (!this.options.get('multiple')) {
+      this.current(function (allData) {
+        $.map(allData, function (data) {
+          data.selected = false;
+        });
+      });
+
+      this.$element.val(data.id);
+      this.$element.trigger('change');
+    } else {
+      var value = this.$element.val();
+      value += this._valueSeparator + data.id;
+
+      this.$element.val(value);
+      this.$element.trigger('change');
+    }
+  };
+
+  InputData.prototype.unselect = function (_, data) {
+    var self = this;
+
+    data.selected = false;
+
+    this.current(function (allData) {
+      var values = [];
+
+      for (var d = 0; d < allData; d++) {
+        var item = allData[d];
+
+        if (data.id == item.id) {
+          continue;
+        }
+
+        values.push(data.id);
+      }
+
+      self.$element.val(values.join(self._valueSeparator));
+      self.$element.trigger('change');
+    });
+  };
+
+  InputData.prototype.query = function (_, params, callback) {
+    var results = [];
+
+    for (var d = 0; d < this._currentData.length; d++) {
+      var data = this._currentData[d];
+
+      var matches = this.matches(params, data);
+
+      if (matches !== null) {
+        results.push(matches);
+      }
+    }
+
+    callback({
+      results: results
+    });
+  };
+
+  InputData.prototype.addOptions = function (_, $options) {
+    var options = $.map($options, function ($option) {
+      return $.data($option[0], 'data');
+    });
+
+    this._currentData.push.apply(this._currentData, options);
+  };
+
+  return InputData;
 });
 
 define('select2/compat/query',[
