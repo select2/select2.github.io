@@ -19,7 +19,15 @@
     What should the results returned to Select2 look like?
   </h3>
 
-  {% include options/not-written.html %}
+  <p>
+    Each object returned to Select2 must, at least, contain <code>id</code> and <code>text</code> properties.
+    If the JSON object returned by your search endpoint returns objects looking like <code>{ name: "MyName", id: 123 }</code>,
+    you must convert these object to <code>{ text: "MyName", id: 123 }</code> for Select2 to pick them up.   
+  </p>
+
+  <p>
+    The conversion can be done in the client or on the server, before returning the original result.
+  </p>
 
   <h3>
     Is there a way to modify the response before passing it back to Select2?
