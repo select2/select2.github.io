@@ -19,7 +19,27 @@
     What should the results returned to Select2 look like?
   </h3>
 
-  {% include options/not-written.html %}
+  <pre>
+{
+  "results": [
+    {
+      "id": 1,
+      "text": "Option 1"
+    },
+    {
+      "id": 2,
+      "text": "Option 2"
+    },
+    {
+      "id": 3,
+      "text": "Option 3"
+    }
+  ],
+  "pagination": {
+    "more": false
+  }
+}
+  </pre>
 
   <h3>
     Is there a way to modify the response before passing it back to Select2?
